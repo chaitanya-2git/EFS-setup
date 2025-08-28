@@ -1,0 +1,89 @@
+# Amazon EFS (Elastic File System) with EC2
+
+Amazon **Elastic File System (EFS)** is a **serverless, scalable, shared file storage** service in AWS.  
+It allows multiple **EC2 instances** to access the same filesystem at the same time.
+##  Why Use EFS?
+- Shared storage for **multiple EC2 instances**
+- Hosting **web applications** (e.g., WordPress, Drupal)
+- **Big Data & Analytics** processing
+- Persistent storage for **ECS/EKS containers**
+- **Backup & centralized file sharing**
+
+⚡ **Difference from EBS**:  
+- **EBS** → Can attach to **only 1 EC2** at a time  
+- **EFS** → Can attach to **many EC2s simultaneously** 
+
+
+
+##  Setup Guide
+
+### 1. Create an EFS File System
+1. Go to **AWS Console → EFS → Create File System**  
+2. Select the **same VPC** where EC2 instances are running  
+3. Add **Mount Targets** in the same **subnets & AZs** as EC2  
+4. Note down the **File System ID** (example: `fs-12345678`)  
+
+
+### 2. Configure Security Groups
+- In **EFS Security Group**, add an inbound rule:  
+  - **Type**: NFS  
+  - **Port**: 2049  
+  - **Source**: EC2 Security Group  
+
+
+### 3. Install NFS Utilities on EC2
+SSH into each EC2 instance and install the client.
+
+**Amazon Linux / Amazon Linux 2**
+```bash
+sudo yum update -y
+sudo yum install -y amazon-efs-utils
+
+### ubuntu
+sudo apt update -y
+sudo apt install -y nfs-common
+
+4. Create Mount Directory
+sudo mkdir /mnt/efs
+
+5. Mount the EFS File System
+
+Find your EFS DNS name (example: fs-12345678.efs.ap-south-1.amazonaws.com).
+
+If using amazon-efs-utils:
+
+sudo mount -t efs fs-12345678:/ /mnt/efs
+
+
+If using nfs-common:
+
+sudo mount -t nfs -o nfsvers=4.1 fs-12345678.efs.ap-south-1.amazonaws.com:/ /mnt/efs
+
+
+
+6. Verify the Setup
+
+On EC2 Instance 1:
+
+echo "Hello from Instance 1" > /mnt/efs/test.txt
+
+
+On EC2 Instance 2:
+
+cat /mnt/efs/test.txt
+
+@@ If you see the text, both instances are successfully sharing the same storage.
+
+
+7. Auto-Mount on Reboot
+
+To mount automatically after reboot, edit /etc/fstab:
+
+fs-12345678:/ /mnt/efs efs defaults,_netdev 0 0
+
+
+Then apply:
+sudo mount -a
+
+
+
